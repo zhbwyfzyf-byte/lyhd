@@ -1,0 +1,40 @@
+name: Auto Sync Upstream
+
+on:
+  schedule:
+    # 每天凌晨 2 点自动同步 (UTC 时间)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # 允许手动点击按钮立即同步
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 必须赋予写入权限，否则无法推送回仓库
+
+    steps:
+      - name: Checkout Your Fork
+        uses: actions/checkout@v4
+        with:
+          ref: main # 这里填你自己的分支名，通常是 main 或 master
+          fetch-depth: 0 # 获取完整历史记录，防止合并冲突
+
+      - name: Sync with Upstream
+        run: |
+          # 1. 设置 Git 身份（Action 机器人）
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # 2. 添加原作者仓库作为上游远程地址
+          # 请将下面的 URL 替换为你 Fork 的那个原仓库地址
+          git remote add upstream https://github.com/cmliu/edgetunnel.git
+          
+          # 3. 获取上游代码
+          git fetch upstream
+
+          # 4. 合并上游的 main 分支到你的分支
+          # --allow-unrelated-histories 防止某些情况下历史记录不匹配
+          git merge upstream/main --no-edit || (echo "Merge conflict detected" && exit 1)
+
+          # 5. 推送回你自己的 GitHub 仓库
+          git push origin main
